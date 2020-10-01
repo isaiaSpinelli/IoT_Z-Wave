@@ -3,3 +3,6 @@ options.xml
 ozwcache_*.xml
 pyozw.sqlite
 zwscene.xml
+.idea
+__pycache__
+
