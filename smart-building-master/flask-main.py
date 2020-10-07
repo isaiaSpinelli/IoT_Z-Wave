@@ -351,6 +351,11 @@ def get_nodes_configuration():
 """
 @app.route('/network/nodes', strict_slashes=False)
 def nodes():
+    
+    #print(backend.get_nodes_list())
+    #d1 = OrderedDict()
+    #d1['a'] = 1
+    #d1['b'] = 2
     return jsonify(backend.get_nodes_list())
 
 

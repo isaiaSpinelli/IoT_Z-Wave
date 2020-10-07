@@ -611,9 +611,12 @@ class Backend():
         """
         #### COMPLETE THIS METHOD ####
         d1 = OrderedDict()
-        for n in range(0,self.network.nodes_count - 1):
-            d1.update({n,self._lookup_node(n).product_name})
+        n = 1
+        for n in range(1,len(self.network.nodes)):
+            d1[str(n)] = self._lookup_node(n).product_name 
         return d1
+        #return self._lookup_node(1).product_name
+        #node in self.network.nodes.items()
 
     def get_sensors_list(self):
         """Get a list of sensor nodes in the network, where indexes are
@@ -769,7 +772,8 @@ class Backend():
         temp = self.network.controller.add_node();
         time.sleep(10)
         temp1 = self.network.controller.cancel_command()
-        return self._lookup_node(1)
+        #return self.network.nodes.items()
+        return self._lookup_node(self.network.nodes_count)
         
 
 
