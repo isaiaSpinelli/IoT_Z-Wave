@@ -401,7 +401,7 @@ def get_dimmers_list():
 ################################################################################
 """
 @api            {get}   /node/add Add
-@apiName                add_node
+@apiName                    
 @apiGroup               Node
 
 @apiDescription Adds a (non-controller) node to the network by switching the
@@ -454,7 +454,6 @@ def add_node():
         node = backend.add_node()
     except RuntimeError as e:
         return ("InclusionError -- {}".format(e), 400)
-
     return jsonify(node)
 
 
