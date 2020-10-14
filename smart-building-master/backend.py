@@ -210,7 +210,7 @@ class Backend():
 
         options.set_log_file('OZW.log')
         options.set_append_log_file(False)
-        options.set_console_output(False)
+        options.set_console_output(True)
         options.set_save_log_level(
             'Debug' if self.log_level <= logging.DEBUG else 'Warning'
         )
@@ -541,8 +541,23 @@ class Backend():
         :returns: dict: with various info about the network and currently
                 associated nodes
         """
-        #### COMPLETE THIS METHOD ####
+        dict_n_info = OrderedDict(sorted(self.network.nodes.items()))
+        ret = {}
 
+        for key, value in dict_n_info.items():
+            dict_n_info_node = {}
+            dict_n_info_node["Is Ready"] = value.is_ready
+            dict_n_info_node["Neighbours"] = list(value.neighbors)
+            dict_n_info_node["Node ID"] = str(value.node_id)
+            dict_n_info_node["Node location"] = value.location
+            dict_n_info_node["Node type"] = value.type
+            dict_n_info_node["Node name"] = value.name
+            dict_n_info_node["Product name"] = value.product_name
+            dict_n_info_node["Query Stage"] = value.query_stage
+            ret[str(key)] = dict_n_info_node
+        
+        ret["Network Home ID"] = self.network.home_id
+        return ret
 
     def get_nodes_configuration(self):
         """Get an overview of the network and its nodes' configuration parameters (ID,
@@ -551,7 +566,7 @@ class Backend():
         :returns: dict: the nodes's configuration parameters
         """
         result = {
-            'Network Home ID':  self.network.home_id_str
+            'Network Home ID':  self.network.home_id
         }
 
         self.logger.debug("looking for nodes...")
@@ -610,11 +625,21 @@ class Backend():
             }
         """
         #### COMPLETE THIS METHOD ####
-        d1 = OrderedDict()
-        n = 1
-        for n in range(1,len(self.network.nodes)):
-            d1[str(n)] = self._lookup_node(n).product_name 
-        return d1
+        dict_n_info = OrderedDict(sorted(self.network.nodes.items()))
+        ret = {}
+
+        for key, value in dict_n_info.items():
+            dict_n_info_node = {}
+            ret[str(key)] = value.product_name
+        
+        return ret
+        
+        
+        # d1 = OrderedDict()
+        # n = 1
+        # for n in range(1,len(self.network.nodes)):
+            # d1[str(n)] = self._lookup_node(n).product_name 
+        # return d1
         #return self._lookup_node(1).product_name
         #node in self.network.nodes.items()
 
@@ -631,7 +656,15 @@ class Backend():
             }
         """
         #### COMPLETE THIS METHOD ####
+        dict_n_info = OrderedDict(sorted(self.network.nodes.items()))
+        ret = {}
 
+        for key, value in dict_n_info.items():
+            dict_n_info_node = {}
+            if(self._is_sensor(value)):
+                ret[str(key)] = value.product_name
+
+        return ret
 
     def get_dimmers_list(self):
         """Get a list of dimmer nodes in the network, where indexes are
@@ -646,8 +679,12 @@ class Backend():
             }
         """
         #### COMPLETE THIS METHOD ####
-
-
+        ret = {}
+        for i,node in self.network.nodes.items():
+            if self._is_dimmer(node):
+                ret[str(node.node_id)] = node.product_name
+                
+        return ret 
     ############################################################################
     # @nodes
     ############################################################################
@@ -769,9 +806,22 @@ class Backend():
                 * network is not started
         """
         #### COMPLETE THIS METHOD ####
+        node_count = self.network.nodes_count
         temp = self.network.controller.add_node();
-        time.sleep(10)
+        timeout = True
+        for i in range(0, 30):
+            if node_count != self.network.nodes_count:
+                self.logger.debug("Network ready after {}s".format(i))
+                timeout = False
+                break
+            else:
+                time.sleep(1.0)
+        
+        
         temp1 = self.network.controller.cancel_command()
+        if timeout:
+            raise RuntimeError("timeout occurs")
+
         #return self.network.nodes.items()
         return self._lookup_node(self.network.nodes_count)
         
@@ -789,10 +839,24 @@ class Backend():
                 * network is not started
         """
         #### COMPLETE THIS METHOD ####
+        node_count = self.network.nodes_count
         temp = self.network.controller.begin_command_add_device();
-        time.sleep(20)
+        timeout = True
+        for i in range(0, 20):
+            if node_count != self.network.nodes_count:
+                timeout = False
+                break
+            else:
+                time.sleep(1.0)
+        
+        
         temp1 = self.network.controller.cancel_command()
-        return self.network.nodes[1]
+        if timeout:
+            raise RuntimeError("timeout occurs")
+
+        #return self.network.nodes.items()
+        return self._lookup_node(self.network.nodes_count)
+
 
 
     def set_node_location(self, n, value):
@@ -806,7 +870,19 @@ class Backend():
         :raises: RuntimeError: if the node is not found
         """
         #### COMPLETE THIS METHOD ####
+        node = self._lookup_node(n)
+        
+        if not node:
+            raise RuntimeError("No such node")
+        
+        if not isinstance(value, str):
+            raise TypeError("Argument 'location' has incorrect type (expected str, got " + str(type(value)) + ")")
 
+        node.location = value 
+        return {
+            "node_id": node.node_id,
+            "value": node.location
+        }
 
     def set_node_name(self, n, value):
         """Set a node's name.
@@ -819,7 +895,19 @@ class Backend():
         :raises: RuntimeError: if the node is not found
         """
         #### COMPLETE THIS METHOD ####
+        node = self._lookup_node(n)
+        
+        if not node:
+            raise RuntimeError("No such node")
+        
+        if not isinstance(value, str):
+            raise TypeError("Argument 'name' has incorrect type (expected str, got " + str(type(value)) + ")")
 
+        node.name = value 
+        return {
+            "node_id": node.node_id,
+            "value": node.name
+        }
 
     def get_node_location(self, n):
         """Get a node's location.
@@ -847,7 +935,11 @@ class Backend():
         :raises: RuntimeError: if the node is not found
         """
         #### COMPLETE THIS METHOD ####
-
+        node = self._lookup_node(n)
+        if not node:
+            raise RuntimeError("No such node")
+            
+        return node.name
 
     def get_neighbours_list(self, n):
         """Get a node's llist of neighbors.
@@ -859,6 +951,11 @@ class Backend():
         :raises: RuntimeError: if the node is not found
         """
         #### COMPLETE THIS METHOD ####
+        node = self._lookup_node(n)
+        if not node:
+            raise RuntimeError("No such node")
+
+        return list(node.neighbors)
 
 
     def set_node_parameter(self, n, pindex, value, size):
@@ -877,7 +974,16 @@ class Backend():
         :raises: RuntimeError: if the node is not found
         """
         #### COMPLETE THIS METHOD ####
+        node = self._lookup_node(n)
+        
+        values = [value for value in node.get_values(class_id="All",    
+            genre="All",type="All", readonly=False, writeonly="All").values()]
 
+        temp = values[pindex].data 
+        values[pindex].data=value
+        
+        return True
+        
 
     def get_node_parameter(self, n, pindex):
         """Get a node's configuration parameter.
@@ -891,6 +997,35 @@ class Backend():
         :raises: RuntimeError: if the node is not {found | ready}
         """
         #### COMPLETE THIS METHOD ####
+        node = self._lookup_node(n)
+
+        # <http://www.openzwave.com/dev/classOpenZWave_1_1SensorMultilevel.html>
+        values = node.get_values(
+            class_id="All",    
+            genre="All",type="All", readonly=False, writeonly="All"
+        )
+        
+        if not values:
+            raise RuntimeError("Level: Parameters not found. Is this a node?")
+
+        # who cares if more => bug??? Check the get_values() above
+        if len(values) > 1:
+            self.logger.warning(
+                "Node {}: get_values(Level) returned more than one value!?".format(
+                    node.node_id
+                )
+            )
+        
+        if pindex > len(values.items()):
+            return None
+        value = [
+            v.data
+            for k,v in values.items()
+        ][pindex]
+
+        return {
+            "Parameter": value
+        }
 
 
 ################################################################################
@@ -984,7 +1119,40 @@ class Backend_with_sensors(Backend):
         }
         """
         #### COMPLETE THIS METHOD ####
+        node = self._lookup_sensor_node(n)
 
+        # <http://www.openzwave.com/dev/classOpenZWave_1_1SensorMultilevel.html>
+        values = node.get_values(
+            class_id="All",    
+            genre="User", readonly=True, writeonly=False,
+            label=self._labels_xref['humidity']
+        )
+
+        if not values:
+            raise RuntimeError("Humidity: label not found. Is this a sensor?")
+
+        # who cares if more => bug??? Check the get_values() above
+        if len(values) > 1:
+            self.logger.warning(
+                "Node {}: get_values(Humidity) returned more than one value!?".format(
+                    node.node_id
+                )
+            )
+        
+
+        value = [
+            v.data
+            for k,v in values.items()
+        ][0]
+        
+        return {
+            "controller": self.controller_name,
+            "sensor": node.node_id,
+            "location": node.location,
+            "type": 'humidity',
+            "updateTime": self._get_node_timestamp(node),
+            "value": value
+        }
 
     def get_sensor_luminance(self, n):
         """Get a sensor's luminance.
@@ -1009,7 +1177,40 @@ class Backend_with_sensors(Backend):
         }
         """
         #### COMPLETE THIS METHOD ####
+        node = self._lookup_sensor_node(n)
 
+        # <http://www.openzwave.com/dev/classOpenZWave_1_1SensorMultilevel.html>
+        values = node.get_values(
+            class_id="All",    
+            genre="User", readonly=True, writeonly=False,
+            label=self._labels_xref['luminance']
+        )
+
+        if not values:
+            raise RuntimeError("Luminance: label not found. Is this a sensor?")
+
+        # who cares if more => bug??? Check the get_values() above
+        if len(values) > 1:
+            self.logger.warning(
+                "Node {}: get_values(Luminance) returned more than one value!?".format(
+                    node.node_id
+                )
+            )
+        
+
+        value = [
+            v.data
+            for k,v in values.items()
+        ][0]
+        
+        return {
+            "controller": self.controller_name,
+            "sensor": node.node_id,
+            "location": node.location,
+            "type": 'luminance',
+            "updateTime": self._get_node_timestamp(node),
+            "value": value
+        }
 
     def get_sensor_ultraviolet(self, n):
         """Get a sensor's ultraviolet reading.
@@ -1034,7 +1235,40 @@ class Backend_with_sensors(Backend):
         }
         """
         #### COMPLETE THIS METHOD ####
+        node = self._lookup_sensor_node(n)
 
+        # <http://www.openzwave.com/dev/classOpenZWave_1_1SensorMultilevel.html>
+        values = node.get_values(
+            class_id="All",    
+            genre="User", readonly=True, writeonly=False,
+            label=self._labels_xref['ultraviolet']
+        )
+
+        if not values:
+            raise RuntimeError("Ultraviolet: label not found. Is this a sensor?")
+
+        # who cares if more => bug??? Check the get_values() above
+        if len(values) > 1:
+            self.logger.warning(
+                "Node {}: get_values(Ultraviolet) returned more than one value!?".format(
+                    node.node_id
+                )
+            )
+        
+
+        value = [
+            v.data
+            for k,v in values.items()
+        ][0]
+        
+        return {
+            "controller": self.controller_name,
+            "sensor": node.node_id,
+            "location": node.location,
+            "type": 'ultraviolet',
+            "updateTime": self._get_node_timestamp(node),
+            "value": value
+        }
 
     def get_sensor_motion(self, n):
         """Get a sensor's motion.
@@ -1059,7 +1293,40 @@ class Backend_with_sensors(Backend):
         }
         """
         #### COMPLETE THIS METHOD ####
+        node = self._lookup_sensor_node(n)
 
+        # <http://www.openzwave.com/dev/classOpenZWave_1_1SensorMultilevel.html>
+        values = node.get_values(
+            class_id="All",    
+            genre="User", readonly=True, writeonly=False,
+            label=self._labels_xref['motion']
+        )
+
+        if not values:
+            raise RuntimeError("Motion: label not found. Is this a sensor?")
+
+        # who cares if more => bug??? Check the get_values() above
+        if len(values) > 1:
+            self.logger.warning(
+                "Node {}: get_values(Motion) returned more than one value!?".format(
+                    node.node_id
+                )
+            )
+        
+
+        value = [
+            v.data
+            for k,v in values.items()
+        ][0]
+        
+        return {
+            "controller": self.controller_name,
+            "sensor": node.node_id,
+            "location": node.location,
+            "type": 'motion',
+            "updateTime": self._get_node_timestamp(node),
+            "value": value
+        }
 
     def get_sensor_battery(self, n):
         """Get a sensor's battery level.
@@ -1078,13 +1345,47 @@ class Backend_with_sensors(Backend):
             "controller": ...,
             "sensor": ...,
             "location": ...,
-            "type": 'motion',
+            "type": 'battery',
             "updateTime": ...,
             "value": ...
         }
         """
         #### COMPLETE THIS METHOD ####
+        node = self._lookup_sensor_node(n)
 
+        # <http://www.openzwave.com/dev/classOpenZWave_1_1SensorMultilevel.html>
+        values = node.get_values(
+            class_id="All",    
+            genre="User", readonly=True, writeonly=False,
+            label=self._labels_xref['battery']
+        )
+        
+  
+        if not values:
+            raise RuntimeError("Battery: label not found. Is this a sensor?")
+
+        # who cares if more => bug??? Check the get_values() above
+        if len(values) > 1:
+            self.logger.warning(
+                "Node {}: get_values(Battery) returned more than one value!?".format(
+                    node.node_id
+                )
+            )
+        
+
+        value = [
+            v.data
+            for k,v in values.items()
+        ][0]
+        
+        return {
+            "controller": self.controller_name,
+            "sensor": node.node_id,
+            "location": node.location,
+            "type": 'battery',
+            "updateTime": self._get_node_timestamp(node),
+            "value": value
+        }
 
     def get_sensor_readings(self, n):
         """Get all measurements for a sensor.
@@ -1110,6 +1411,43 @@ class Backend_with_sensors(Backend):
         }
         """
         #### COMPLETE THIS METHOD ####
+        node = self._lookup_sensor_node(n)
+
+        # <http://www.openzwave.com/dev/classOpenZWave_1_1SensorMultilevel.html>
+        values = node.get_values(
+            class_id="All",    
+            genre="User", readonly=True, writeonly=False
+        )
+
+        if not values:
+            raise RuntimeError("Battery: label not found. Is this a sensor?")
+
+        # who cares if more => bug??? Check the get_values() above
+        if len(values) > 1:
+            self.logger.warning(
+                "Node {}: get_values(Battery) returned more than one value!?".format(
+                    node.node_id
+                )
+            )
+        
+
+        value = [
+            v.data
+            for k,v in values.items()
+        ]
+        
+        return {
+            "battery": value[2],
+            "controller": self.controller_name,
+            "humidity": value[6],
+            "location": node.location,
+            "luminance": value[5],
+            "motion": value[3],
+            "sensor": node.node_id,
+            "temperature": value[4],
+            "ultraviolet": value[7],
+            "updateTime": self._get_node_timestamp(node)
+        }
 
 
     def set_sensors_parameter(self, index, value, size):
@@ -1135,6 +1473,17 @@ class Backend_with_sensors(Backend):
         :raises: RuntimeError: if network is not started
         """
         #### COMPLETE THIS METHOD ####
+        ret = {}
+        for i,node in self.network.nodes.items():
+            if self._is_sensor(node):
+                status = self.set_node_parameter(node.node_id,index,value,size)
+                if status:
+                    reason = "The sensor parameter has been changed"
+                else:
+                    reason = "A problem happened during the change of the sensor parameter"
+                ret[str(node.node_id)] = (status,reason)
+                
+        return ret 
 
 
 ################################################################################
@@ -1169,7 +1518,39 @@ class Backend_with_dimmers(Backend):
         }
         """
         #### COMPLETE THIS METHOD ####
+        node = self._lookup_dimmer_node(n)
 
+        # <http://www.openzwave.com/dev/classOpenZWave_1_1SensorMultilevel.html>
+        values = node.get_values(
+            class_id=0x26,    
+            genre="User", readonly=False, writeonly=False
+        )
+        
+        if not values:
+            raise RuntimeError("Level: label not found. Is this a sensor?")
+
+        # who cares if more => bug??? Check the get_values() above
+        if len(values) > 1:
+            self.logger.warning(
+                "Node {}: get_values(Level) returned more than one value!?".format(
+                    node.node_id
+                )
+            )
+        
+
+        value = [
+            v.data
+            for k,v in values.items()
+        ][0]
+        
+        return {
+            "controller": self.controller_name,
+            "dimmer": node.node_id,
+            "location": node.location,
+            "type": 'level',
+            "updateTime": self._get_node_timestamp(node),
+            "value": value
+        }
 
     def set_dimmer_level(self, n, value):
         """Set a dimmer's level.
@@ -1182,8 +1563,24 @@ class Backend_with_dimmers(Backend):
         :raises: RuntimeError: if the node is not {found | ready | dimmer}
         """
         #### COMPLETE THIS METHOD ####
+        node = self._lookup_dimmer_node(n)
+        
+        if not node:
+            raise RuntimeError("No such node")
+        
+        if not isinstance(value, int):
+            raise TypeError("Argument 'value' has incorrect type (expected int, got " + str(type(value)) + ")")
+        
+        values = [value for value in node.get_values("All","User","All","All",label=self._labels_xref['level']).values()]
 
-
+        temp = values[0].data 
+        values[0].data=value
+        
+        return {
+            "node_id": node.node_id,
+            "value": temp
+        }
+        
 ################################################################################
 ################################################################################
 class Backend_with_dimmers_and_sensors(Backend_with_dimmers, Backend_with_sensors):
