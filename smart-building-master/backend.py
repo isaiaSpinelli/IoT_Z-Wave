@@ -210,7 +210,7 @@ class Backend():
 
         options.set_log_file('OZW.log')
         options.set_append_log_file(False)
-        options.set_console_output(True)
+        options.set_console_output(False)
         options.set_save_log_level(
             'Debug' if self.log_level <= logging.DEBUG else 'Warning'
         )
@@ -633,15 +633,6 @@ class Backend():
             ret[str(key)] = value.product_name
         
         return ret
-        
-        
-        # d1 = OrderedDict()
-        # n = 1
-        # for n in range(1,len(self.network.nodes)):
-            # d1[str(n)] = self._lookup_node(n).product_name 
-        # return d1
-        #return self._lookup_node(1).product_name
-        #node in self.network.nodes.items()
 
     def get_sensors_list(self):
         """Get a list of sensor nodes in the network, where indexes are
@@ -822,9 +813,6 @@ class Backend():
 
         if timeout:
             raise RuntimeError("timeout occurs")
-
-        #return self.network.nodes.items()
-        # ~ node = self._lookup_node(self.network.nodes_count)
         
         node = self.node_added
         dict_n_info_node = {}
