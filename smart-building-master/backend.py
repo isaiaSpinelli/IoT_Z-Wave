@@ -809,7 +809,7 @@ class Backend():
         node_count = self.network.nodes_count
         temp = self.network.controller.add_node();
         timeout = True
-        for i in range(0, 30):
+        for i in range(0, 20):
             if node_count != self.network.nodes_count:
                 self.logger.debug("Network ready after {}s".format(i))
                 timeout = False
@@ -819,11 +819,24 @@ class Backend():
         
         
         temp1 = self.network.controller.cancel_command()
+
         if timeout:
             raise RuntimeError("timeout occurs")
 
         #return self.network.nodes.items()
-        return self._lookup_node(self.network.nodes_count)
+        # ~ node = self._lookup_node(self.network.nodes_count)
+        
+        node = self.node_added
+        dict_n_info_node = {}
+        dict_n_info_node["Is Ready"] = node.is_ready
+        dict_n_info_node["Neighbours"] = list(node.neighbors)
+        dict_n_info_node["Node ID"] = str(node.node_id)
+        dict_n_info_node["Node location"] = node.location
+        dict_n_info_node["Node type"] = node.type
+        dict_n_info_node["Node name"] = node.name
+        dict_n_info_node["Product name"] = node.product_name
+        return dict_n_info_node
+        
         
 
 
@@ -840,7 +853,7 @@ class Backend():
         """
         #### COMPLETE THIS METHOD ####
         node_count = self.network.nodes_count
-        temp = self.network.controller.begin_command_add_device();
+        temp = self.network.controller.begin_command_remove_device();
         timeout = True
         for i in range(0, 20):
             if node_count != self.network.nodes_count:
@@ -854,8 +867,16 @@ class Backend():
         if timeout:
             raise RuntimeError("timeout occurs")
 
-        #return self.network.nodes.items()
-        return self._lookup_node(self.network.nodes_count)
+        node = self.node_removed
+        dict_n_info_node["Is Ready"] = node.is_ready
+        dict_n_info_node["Neighbours"] = list(node.neighbors)
+        dict_n_info_node["Node ID"] = str(node.node_id)
+        dict_n_info_node["Node location"] = node.location
+        dict_n_info_node["Node type"] = node.type
+        dict_n_info_node["Node name"] = node.name
+        dict_n_info_node["Product name"] = node.product_name
+        dict_n_info_node["Query Stage"] = node.query_stage
+        return dict_n_info_node
 
 
 
@@ -976,13 +997,14 @@ class Backend():
         #### COMPLETE THIS METHOD ####
         node = self._lookup_node(n)
         
-        values = [value for value in node.get_values(class_id="All",    
-            genre="All",type="All", readonly=False, writeonly="All").values()]
+        # OLD VERSION 
+        # ~ values = [value for value in node.get_values(class_id="All",    
+            # ~ genre="All",type="All", readonly=False, writeonly="All").values()]
 
-        temp = values[pindex].data 
-        values[pindex].data=value
+        # ~ temp = values[pindex].data 
+        # ~ values[pindex].data=value
         
-        return True
+        return node.set_config_param(pindex, value, size)
         
 
     def get_node_parameter(self, n, pindex):
@@ -1002,7 +1024,7 @@ class Backend():
         # <http://www.openzwave.com/dev/classOpenZWave_1_1SensorMultilevel.html>
         values = node.get_values(
             class_id="All",    
-            genre="All",type="All", readonly=False, writeonly="All"
+            genre="Config",type="All", readonly="All", writeonly="All", index=pindex, label="All"
         )
         
         if not values:
@@ -1016,12 +1038,10 @@ class Backend():
                 )
             )
         
-        if pindex > len(values.items()):
-            return None
         value = [
             v.data
             for k,v in values.items()
-        ][pindex]
+        ][0]
 
         return {
             "Parameter": value
